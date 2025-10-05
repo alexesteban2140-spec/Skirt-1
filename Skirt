@@ -1,0 +1,142 @@
+
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+local UserInputService = game:GetService("UserInputService")
+
+local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
+local Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+
+-- Rainbow
+local function getRainbowColor(time)
+    local r = math.sin(time * 2) * 0.5 + 0.5
+    local g = math.sin(time * 2 + 2) * 0.5 + 0.5
+    local b = math.sin(time * 2 + 4) * 0.5 + 0.5
+    return Color3.new(r, g, b)
+end
+
+-- Crear ScreenGui
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "SkirtHub"
+ScreenGui.ResetOnSpawn = false
+ScreenGui.Parent = PlayerGui -- Funciona en KRNL/Delta
+
+-- Crear Frame
+local HubFrame = Instance.new("Frame")
+HubFrame.Size = UDim2.new(0, 400, 0, 400)
+HubFrame.Position = UDim2.new(0.5, -200, 0.5, -200)
+HubFrame.BackgroundColor3 = Color3.fromRGB(0,0,0)
+HubFrame.BackgroundTransparency = 0.3 -- menos transparente para que se vea
+HubFrame.BorderSizePixel = 0
+HubFrame.Parent = ScreenGui
+
+-- Hacer movible
+local dragging = false
+local dragInput, mousePos, framePos
+
+HubFrame.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+        dragging = true
+        mousePos = input.Position
+        framePos = HubFrame.Position
+        input.Changed:Connect(function()
+            if input.UserInputState == Enum.UserInputState.End then
+                dragging = false
+            end
+        end)
+    end
+end)
+
+HubFrame.InputChanged:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseMovement then
+        dragInput = input
+    end
+end)
+
+UserInputService.InputChanged:Connect(function(input)
+    if input == dragInput and dragging then
+        local delta = input.Position - mousePos
+        HubFrame.Position = UDim2.new(
+            framePos.X.Scale,
+            framePos.X.Offset + delta.X,
+            framePos.Y.Scale,
+            framePos.Y.Offset + delta.Y
+        )
+    end
+end)
+
+-- Botón minimizar
+local MinimizeButton = Instance.new("TextButton")
+MinimizeButton.Size = UDim2.new(0, 50, 0, 25)
+MinimizeButton.Position = UDim2.new(1, -55, 0, 5)
+MinimizeButton.Text = "_"
+MinimizeButton.TextColor3 = Color3.new(1,0,0)
+MinimizeButton.BackgroundTransparency = 0.5
+MinimizeButton.Parent = HubFrame
+
+local minimized = false
+MinimizeButton.MouseButton1Click:Connect(function()
+    minimized = not minimized
+    for _,child in pairs(HubFrame:GetChildren()) do
+        if child:IsA("TextButton") and child ~= MinimizeButton then
+            child.Visible = not minimized
+        end
+    end
+end)
+
+-- Variables TP
+local savedPosition = nil
+
+-- Botones TP, TP2, TRAS
+local buttons = {
+    {Name = "TP", Function = function()
+        savedPosition = Character.HumanoidRootPart.Position
+        print("Ubicación guardada")
+    end},
+    {Name = "TP2", Function = function()
+        if savedPosition then
+            Character.HumanoidRootPart.CFrame = CFrame.new(savedPosition)
+            print("Teletransportado")
+        else
+            warn("Primero guarda una ubicación con TP")
+        end
+    end},
+    {Name = "TRAS", Function = function()
+        for _, part in pairs(Character:GetDescendants()) do
+            if part:IsA("BasePart") then
+                part.CanCollide = false
+            end
+        end
+        print("Puedes atravesar paredes por 5 segundos")
+        wait(5)
+        for _, part in pairs(Character:GetDescendants()) do
+            if part:IsA("BasePart") then
+                part.CanCollide = true
+            end
+        end
+        print("Colisiones restauradas")
+    end}
+}
+
+for i, btnInfo in pairs(buttons) do
+    local btn = Instance.new("TextButton")
+    btn.Size = UDim2.new(0, 120, 0, 40)
+    btn.Position = UDim2.new(0, 20, 0, 50 * i)
+    btn.Text = btnInfo.Name
+    btn.TextColor3 = Color3.new(1,0,0)
+    btn.BackgroundTransparency = 0.3
+    btn.BorderSizePixel = 2
+    btn.Parent = HubFrame
+    btn.MouseButton1Click:Connect(btnInfo.Function)
+end
+
+-- Rainbow effect en bordes
+spawn(function()
+    while true do
+        for _, child in pairs(HubFrame:GetChildren()) do
+            if child:IsA("TextButton") then
+                child.BorderColor3 = getRainbowColor(tick())
+            end
+        end
+        wait(0.03)
+    end
+end)
